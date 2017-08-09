@@ -1,0 +1,197 @@
+---
+title: "Insight from HR Data"
+output: html_notebook
+---
+
+Most companies would love to keep their valuable employees for a very long period of time, unfortunately this is not the case. Many employees walk of the door with very shot or no notice, surpervisors are also not able to quickly anticipate these actions and take positive steps. 
+
+If employers can anticipate employees decision to leave they would be better prepared to curb any negative outcome it would have on the company.
+
+In this project we have data from the HR department of a company. The CEO wants us to use the data to find out why and how people are leaving his company and also to make predictions on who would leave next.
+
+
+### Project Goal.
+1. We should learn how to ask questions from Data
+2. Make visualizations from Data
+
+***
+
+
+### Information Contained In The Data:
+
+1. **Satisfaction Level**: The employee was asked to give a score on how happy he/she is in their current role
+
+2. **Last Evaluation**: Recent work assessment from supervisors
+
+3. **Number of Projects** A way of quantifying the job assigned to employees
+
+4. **Work accident**: Indicates whether or not an employee had had an accident during work
+
+5. **promotion in 5 years**: Indicates whether or not employee had a promotion in the last five years.
+
+6. **Department**: Lists the various departmens in the company
+
+7. **Salary**: shows the Income level of all employees
+
+8. **Time spent in the company**: Number of years employee had been in the company
+
+9. **Average monthly hours** Total hours worked per month
+
+10. **left**: A label that tells who left or remained
+
+***
+
+So now we have the raw material to proceed with our analysis. The full reproducible code for this project is available here. In this post i'll just briefly outline some data cleaning that was carried out.
+
+* I changed some dummy variables into more meaningful values.
+* I slitted some variables into intervals
+
+```{r, echo=FALSE, results='hide'}
+library(tidyverse)
+library(forcats)
+library(caret)
+```
+
+```{r, echo=FALSE, message=FALSE, results='hide'}
+hr_data <- read_csv("~/Desktop/hr-analytics/hr-analytics/hrAnalytics/HR_comma_sep.csv")
+```
+
+```{r, echo=FALSE, message=FALSE, results='asis'}
+library(knitr)
+kable(head(hr_data, 10))
+#str(hr_data)
+```
+ 
+
+```{r, echo=FALSE}
+
+hr_data$Work_accident <- factor(hr_data$Work_accident)
+
+hr_data$left <- factor(hr_data$Work_accident, labels = c("stayed", "left"))
+
+hr_data$salary <- ordered(hr_data$salary, levels = c("low", "medium", "high"))
+
+hr_data$sales <- factor(hr_data$sales)
+
+
+hr_data$promotion_last_5years <- factor(hr_data$promotion_last_5years,
+                                        labels = c("promoted", "not_promoted"))
+
+hr_data$number_project <- factor(hr_data$number_project)
+
+
+hr_data$time_spend_company <- cut(hr_data$time_spend_company,
+                                  breaks = c(-Inf, 3, 7, Inf), 
+                                  labels = c("less_than_3", "between 4 and 7", "greater than 7"))
+
+
+hr_data$satisfaction_level <- cut(hr_data$satisfaction_level,
+                                  breaks = c(-Inf, 0.3, 0.7, Inf),
+                                  labels = c("disatisfied", "partly_satified", "very_satisfied"))
+```
+
+***
+
+```{r}
+summary(hr_data)
+```
+
+### Summary:
+
+1. About 14.5% of all staff in the data left
+
+2. About 2.13% had not been promoted for the past five years
+
+3. The average monthly hours of employee is 201.1
+
+
+***
+
+**Why are people not happy with their job?**
+
+Remember we have a variable called **"Satisfaction Level"** which makes employees rank how happy they are in the company. After splitting the variables into intervals i created three levels namely: **dissatisfaction**, **partly_satisfied**, **very_satisfied**
+
+Our focus in the next plot would be targeted towards the *dissatisfied group*
+
+***
+
+```{r, echo=FALSE}
+fill <- "#4271AE"
+line <- "#1F3552"
+
+ggplot(hr_data, aes(x = satisfaction_level, y = average_montly_hours)) +
+        geom_boxplot(colour = line, fill = fill) +
+        scale_x_discrete(name = "Satisfaction Level") +
+        scale_y_continuous("Average Monthly Hours (Hrs)") +
+        ggtitle("") +
+        theme_bw() +
+        theme(plot.title = element_text(size = 14, face = "bold", hjust = 0.5),
+              axis.title = element_text(face = "bold"))
+```
+***
+
+Take a cusory look at the plot. What do you find?  Majority of staff who claimed to be dissatisfied actually worked longer, some working as high as 300 hours a month.
+
+Questions you could still ask:
+
+1. Why are they woking longer? 
+
+Long hours at work may not mean much if it does't translate into more projects being completed 
+
+
+The next questions we seek to answer is:
+**which group of employees completed more projects**
+
+
+*** 
+
+```{r echo=FALSE}
+
+ggplot(hr_data, aes(x = satisfaction_level, y = number_project)) +
+  geom_count(colour = "skyblue") +
+  scale_x_discrete(name = "Satisfaction Level") +
+        scale_y_discrete("Number of Projects Completed") +
+        ggtitle("") +
+        theme_bw() +
+        theme(plot.title = element_text(size = 14, face = "bold", hjust = 0.5),
+              axis.title = element_text(face = "bold")) +
+        scale_fill_brewer(palette = "Accent")
+
+
+```
+
+Still employees who claim they are dissatisfied - not only are they working longer but they seem to be completing more projects.
+
+***
+
+**What is the reward for their extra effort?**, We have to find out how well they are paid, and also to see if they have beeen promoted
+You could find out how well they are paid by plotting *satisfaction level* against *promotion in last 5 years*
+
+Let's move on and find out **how many long serving employees we still have left**
+
+```{r echo=FALSE}
+
+ggplot(hr_data, aes(x = time_spend_company, fill = left)) +
+        geom_bar(colour = "black")
+
+
+```
+***
+
+Very few employees stay longer than 7 years and most of those employees are rewarded with higher positions
+
+
+Our final plot verifies this claim:
+
+```{r echo=FALSE}
+
+ggplot(hr_data, aes(x = sales)) +
+        geom_bar(fill = "skyblue") +
+        coord_flip() +
+        facet_grid(. ~ time_spend_company) +
+        ggtitle("More Long Serving Employees Recruited into Management") +
+        theme_bw() +
+        theme(plot.title = element_text(size = 14, face = "bold", hjust = 0.5),
+              axis.title = element_text(face = "bold"))
+
+```
